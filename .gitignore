@@ -1,0 +1,54 @@
+# =======================
+#  NexaMart — .gitignore
+# =======================
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# PHP / Composer
+backend/vendor/
+backend/storage/logs/*.log
+backend/storage/cache/*
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+!backend/storage/cache/.gitkeep
+!backend/storage/logs/.gitkeep
+
+# Node / NPM (if used for build tools)
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Docker
+docker/mysql/data/
+
+# Logs
+*.log
+logs/
+
+# Build output
+dist/
+build/
+
+# Temp files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# SSL certs (generated locally)
+docker/ssl/*.pem
+docker/ssl/*.key
+docker/ssl/*.crt

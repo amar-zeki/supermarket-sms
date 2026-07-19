@@ -1,0 +1,141 @@
+version: '3.9'
+
+# ============================================================
+#  NexaMart Enterprise Supermarket Management System
+#  Docker Compose — Development Environment
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  #  APP: PHP 8.3 + Apache
+  # ----------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: nexamart_app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - .:/var/www/html
+      - ./backend/storage:/var/www/html/backend/storage
+    environment:
+      - APACHE_RUN_USER=www-data
+      - APACHE_RUN_GROUP=www-data
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - nexamart_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ----------------------------------------------------------
+  #  DB: MySQL 8.4
+  # ----------------------------------------------------------
+  db:
+    image: mysql:8.4
+    container_name: nexamart_db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-nexamart_root_2024}
+      MYSQL_DATABASE: ${DB_DATABASE:-nexamart_db}
+      MYSQL_USER: ${DB_USERNAME:-nexamart_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-nexamart_pass_2024}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/nexamart.cnf:ro
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - nexamart_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-nexamart_root_2024}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # ----------------------------------------------------------
+  #  REDIS: Cache & Session Store
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: nexamart_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - nexamart_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------
+  #  PHPMYADMIN: Database admin UI (dev only)
+  # ----------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: nexamart_pma
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME:-nexamart_user}
+      PMA_PASSWORD: ${DB_PASSWORD:-nexamart_pass_2024}
+      UPLOAD_LIMIT: 100M
+    depends_on:
+      - db
+    networks:
+      - nexamart_network
+    profiles:
+      - dev
+
+  # ----------------------------------------------------------
+  #  MAILHOG: Email testing (dev only)
+  # ----------------------------------------------------------
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: nexamart_mail
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - nexamart_network
+    profiles:
+      - dev
+
+# ----------------------------------------------------------
+#  Networks
+# ----------------------------------------------------------
+networks:
+  nexamart_network:
+    driver: bridge
+    name: nexamart_network
+
+# ----------------------------------------------------------
+#  Volumes
+# ----------------------------------------------------------
+volumes:
+  mysql_data:
+    name: nexamart_mysql_data
+  redis_data:
+    name: nexamart_redis_data
