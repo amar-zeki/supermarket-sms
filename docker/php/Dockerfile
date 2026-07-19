@@ -29,6 +29,13 @@ RUN pecl install redis && docker-php-ext-enable redis
 # Enable Apache rewrite module
 RUN a2enmod rewrite ssl headers proxy proxy_http
 
+# Copy Apache vhost configuration
+COPY docker/apache/vhost.conf /etc/apache2/sites-available/nexamart.conf
+RUN a2ensite nexamart.conf && a2dissite 000-default.conf
+
+# Copy PHP ini configuration
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/nexamart.ini
+
 # Set working directory
 WORKDIR /var/www/html
 
